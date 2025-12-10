@@ -567,6 +567,7 @@ export default {
       console.log('initial3 processFlatTOC', processFlatTOC)
 
       async function parentLoop (node) {
+        console.log("XXX NODE", node)
         if (node.parent && node.parent.length > 0 && collConfig.value.excludeCollectionIds && collConfig.value.excludeCollectionIds.length > 0) {
           if (Array.isArray(node.parent)) {
             node.parent = node.parent.filter(p => !collConfig.value.excludeCollectionIds.includes(p))
@@ -610,21 +611,19 @@ export default {
               appendParentInTOC.children = await Promise.all(appendParentInTOC.member.filter(item => item.identifier !== node.identifier).map(async (obj) => {
                 const updatedMemberParentResp = await getParentFromApi(obj.identifier)
                 const updatedMemberParent = updatedMemberParentResp.member ? updatedMemberParentResp.member.map(p => p['@id']) : undefined
+
+
+                console.log("XXX TOTO", updatedMemberParent, obj.parent)
                 const updatedMember = {
-                  identifier: obj.identifier ? obj.identifier : obj['@id'],
-                  citeType: obj['@type'] ? obj['@type'] : obj.citeType,
+                  ...getSimpleObject(obj),
                   expanded: obj.identifier === node.id ? node.expanded : undefined,
-                  title: obj.title,
-                  level: node.level,
-                  editorialLevelIndicator: node.editorialLevelIndicator,
-                  totalChildren: obj.totalChildren,
-                  totalDescendants: obj.totalDescendants,
-                  children: obj.children ? obj.children : [],
-                  member: obj.member ? obj.member : [],
                   parent: updatedMemberParent,
-                  dublincore: obj.dublincore,
-                  extensions: obj.extensions
+                  editorialLevelIndicator: node.editorialLevelIndicator,
+                  member: obj.member ? obj.member : [],
+                  level: node.level,
                 }
+                console.log("XXX", updatedMember, node)
+                console.log("XXX 2", processFlatTOC)
                 return updatedMember
               }))
               if (appendParentInTOC.member.filter(item => item.identifier === node.identifier).length > 0) {
@@ -640,13 +639,16 @@ export default {
               // Check if the parent has itself a parent
               if (parentResponse.member) {
                 // Then add the parent id to the parent instance to be added in the TOC
+                console.log("XXX 3", parentResponse.member[0]['@id'])
                 appendParentInTOC.parent = parentResponse.member[0]['@id']
               } else {
                 // Otherwise add a null parent id to the parent instance to be added in the TOC
                 appendParentInTOC.parent = null
               }
               // Add this parent object to the TOC
+              console.log("XXX 4 ", appendParentInTOC, getSimpleObject(appendParentInTOC))
               processFlatTOC = [getSimpleObject(appendParentInTOC), ...processFlatTOC]
+              console.log("XXX 5", processFlatTOC)
               // If the parent has itself a parent : loop
               if (appendParentInTOC.parent && !processFlatTOC.some(item => item.identifier === appendParentInTOC.parent)) {
                 await parentLoop(appendParentInTOC)
@@ -754,6 +756,7 @@ export default {
           return false
         }
       }
+      console.log("XXX flatTOC", processFlatTOC)
       console.log('document DoTS titleMissing debug ...processFlatTOC.filter(i => !titleMissing(i)) : ', processFlatTOC.filter(i => !titleMissing(i)))
       console.log('document DoTS titleMissing debug ...processFlatTOC.filter(i => !titleMissing(i)).length : ', processFlatTOC.filter(i => !titleMissing(i)).length)
       const maxTocDepth = processFlatTOC.filter(i => !titleMissing(i)).length === 0
