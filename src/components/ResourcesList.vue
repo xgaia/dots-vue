@@ -211,10 +211,10 @@
                     >
                       <button
                         type="button"
-                        class="hits-fold"
+                        class="hits-fold is-active"
                         title="Replier les passages"
                         aria-label="Replier les passages"
-                        @click.stop="toggleAllHits(item.identifier)"
+                        @click.stop="toggleAllHits(item.identifier, $event)"
                       >
                         <DirectionalChevron direction="up" />
                       </button>
@@ -257,10 +257,12 @@
                       <button
                         type="button"
                         class="hits-toggle"
-                        @click.stop="toggleAllHits(item.identifier)"
+                        @click.stop="toggleAllHits(item.identifier, $event)"
                       >
                         Voir les {{ item.hits.length }} passages
-                        <DirectionalChevron direction="down" />
+                        <span class="hits-toggle-box">
+                          <DirectionalChevron direction="down" />
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -517,10 +519,17 @@ name: 'ResourcesList',
 
     // Toggle rather than a one-way expansion: an expanded row can be folded
     // back to the preview, the toggle staying visible in both states
-    const toggleAllHits = id => {
-      expandedHits.value = expandedHits.value.includes(id)
+    const toggleAllHits = (id, event) => {
+      const collapsing = expandedHits.value.includes(id)
+      expandedHits.value = collapsing
         ? expandedHits.value.filter(i => i !== id)
         : [...expandedHits.value, id]
+      // Folding removes the passages above the toggle: the page goes back up
+      // to them instead of staying on the rows that moved
+      if (collapsing) {
+        event?.currentTarget.closest('.hits-container')
+          ?.scrollIntoView({ block: 'start' })
+      }
     }
     const areAllHitsShown = id => expandedHits.value.includes(id)
     const isPassagesToggleVisible = item => item.hits.length > HITS_PREVIEW_LIMIT
@@ -1152,7 +1161,8 @@ name: 'ResourcesList',
 /* Same look as the "back to top" arrow, smaller and square: a chevron in the
    collection colour on white, with its own background so the passages do not
    show through while it sticks */
-.list-mode .cell .hits-fold {
+.list-mode .cell .hits-fold,
+.list-mode .cell .hits-toggle-box {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1163,17 +1173,26 @@ name: 'ResourcesList',
   border-radius: var(--button-border-radius);
   background: #ffffff;
   color: var(--fill-color);
+}
+
+.list-mode .cell .hits-fold {
   cursor: pointer;
 }
 
-.list-mode .cell .hits-fold :deep(.icon-wrapper) {
+/* Expanded: the fold button is the active state, in plain collection colour */
+.list-mode .cell .hits-fold.is-active {
+  background: var(--fill-color);
+  color: #ffffff;
+}
+
+.list-mode .cell .hits-fold :deep(.icon-wrapper),
+.list-mode .cell .hits-toggle-box :deep(.icon-wrapper) {
   width: 12px;
   height: 12px;
 }
 
-.list-mode .cell .hits-fold:hover {
-  background: var(--fill-color);
-  color: #ffffff;
+.list-mode .cell .hits-fold.is-active:hover {
+  background: color-mix(in srgb, var(--fill-color) 85%, #000000);
 }
 
 @media screen and (max-width: 768px) {
@@ -1182,7 +1201,8 @@ name: 'ResourcesList',
     margin-bottom: .25rem;
   }
 
-  .list-mode .cell .hits-fold {
+  .list-mode .cell .hits-fold,
+  .list-mode .cell .hits-toggle-box {
     width: 24px;
     height: 24px;
   }
@@ -1217,10 +1237,10 @@ name: 'ResourcesList',
   text-decoration: var(--text-decoration-hover);
 }
 
-/* Same chevron as the sticky fold button, pointing down to expand */
-.list-mode .cell .hits-toggle :deep(.icon-wrapper) {
-  width: 12px;
-  height: 12px;
+/* Chevron box of the collapsed toggle: square like the sticky fold button,
+   next to the label rather than around it */
+.list-mode .cell .hits-toggle-box {
+  flex: none;
 }
 
 /* Open/close the hits of a full-text row: small, in the collection colour,
